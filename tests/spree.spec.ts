@@ -94,18 +94,17 @@ test('Spree Commerce demo store', async ({ page }) => {
   //Select a payment method.
   await expect(page.locator('#checkout div').filter({ hasText: 'Ship Address ' }).nth(1)).toBeVisible();
   ({delay: 30000});
+
   // Wait for the iframe to load (assuming it's a Stripe or Adyen card iframe)
-  const cardFrame = page.frameLocator('iframe[name^="__privateStripeFrame"]');
+  await expect(page.locator('iframe[name*="__privateStripeFrame"]').first()).toBeVisible();
+
   // Wait for the card number field to be visible and interactable
+  const cardFrame = page.frameLocator('iframe[name*="__privateStripeFrame"]');
+  await page.locator('iframe[name*="__privateStripeFrame"]').first().waitFor({ state: 'visible', timeout: 60000 });
   await cardFrame.getByRole('textbox', { name: 'Card number' }).waitFor({ state: 'visible', timeout: 60000 });
   await cardFrame.getByRole('textbox', { name: 'Card number' }).fill('4242 4242 4242 4242');
   await cardFrame.getByRole('textbox', { name: 'Expiration date MM / YY' }).fill('12 / 30');
   await cardFrame.getByRole('textbox', { name: 'Security code' }).fill('123');
-  // Wait and fill credit card fields
-  //await page.locator('iframe[name="__privateStripeFrame52016"]').contentFrame().getByRole('textbox', { name: 'Card number' }).click();
-  //await page.locator('iframe[name="__privateStripeFrame52016"]').contentFrame().getByRole('textbox', { name: 'Card number' }).fill('4242 4242 4242 4242');
-  //await page.locator('iframe[name="__privateStripeFrame52016"]').contentFrame().getByRole('textbox', { name: 'Expiration date MM / YY' }).fill('12 / 30');
-  //await page.locator('iframe[name="__privateStripeFrame52016"]').contentFrame().getByRole('textbox', { name: 'Security code' }).fill('123');
 
   //Complete the order.
   await page.getByRole('button', { name: 'Pay now' }).click();
