@@ -141,11 +141,6 @@ test('Spree Commerce demo store', async ({ page }) => {
   const cardFrame = await (await cardFrameHandle)?.contentFrame();
     if (!cardFrame) throw new Error('Could not find Stripe card input frame for email/mobile fields');
 
-//  await cardFrame.getByRole('textbox', { name: 'Email' }).fill(email);
-//  await cardFrame.getByRole('textbox', { name: 'Mobile number' }).fill('0917 123 4567');
-//  await cardFrame.getByRole('textbox', { name: 'Mobile number' }).press('Tab');
-//  await cardFrame.getByRole('textbox', { name: 'Full name' }).fill('Glenn Gaetos');
-
   //Complete the order and wait for navigation.
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),

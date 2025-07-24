@@ -72,9 +72,10 @@ Integrate the created Playwright test automation framework in Gitlab or Github P
     ../MyGlobe/.github/workflows/playwright.yml
 
 ## Test Environment used
-    - MacOS (local)
+    - VS Code (local)
     - chromium, webkit (safari)
-    - Options: firefox, Edge
+    - Options: firefox, Microsoft Edge
+    - Github
 
 ## Author
 Glennuel Williams B. Gaetos
