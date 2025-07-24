@@ -1,5 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
+import { loadStripe } from '@stripe/stripe-js';
 
 test('Spree Commerce demo store', async ({ page }) => {
   
@@ -41,12 +42,11 @@ test('Spree Commerce demo store', async ({ page }) => {
 
   //Browse products and open a product detail page.
   await page.locator('#block-6474').getByRole('link', { name: 'Shop All' }).click();
-  //await page.getByLabel('Top').getByRole('link', { name: 'Shop All' }).click();
   await page.getByRole('link', { name: 'Sale Ripped T-Shirt $55.99 $' }).click();
 
   //Add the product to cart.
   await page.getByRole('group').filter({ hasText: 'Color: Grey' }).locator('div').nth(3).click();
-  await page.locator('#product-variant-picker').getByRole('button', { name: 'Please choose Size' }).click();
+  await page.locator('#product-variant-picker').getByRole('button', { name: 'PLEASE CHOOSE SIZE' }).click();
   await page.locator('#product-variant-picker label').filter({ hasText: 'M' }).click();
 
   const button = page.getByRole('button', { name: 'Add To Cart' });
@@ -55,7 +55,10 @@ test('Spree Commerce demo store', async ({ page }) => {
   await page.getByRole('button', { name: 'Add To Cart' }).click();
   
   //Go to the cart and verify the product details (name, quantity, price).
-  
+  const cartItem = page.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Ripped T-Shirt' }) });
+  await expect(cartItem).toBeVisible({ timeout: 30000 });
+  await expect(cartItem).toContainText('$');
+  await expect(page.locator('#line_item_quantity')).toHaveValue('1');
 
   //Proceed to checkout
   await page.getByRole('link', { name: 'Checkout' }).click();
@@ -95,23 +98,59 @@ test('Spree Commerce demo store', async ({ page }) => {
   await expect(page.locator('#checkout div').filter({ hasText: 'Ship Address ' }).nth(1)).toBeVisible();
   ({delay: 30000});
 
+  // Publishable key from Stripe dashboard
+  const stripePromise = loadStripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+  const initializeStripeElements = async () => {
+  const stripe = await stripePromise;
+  };
+
   // Wait for the iframe to load (assuming it's a Stripe or Adyen card iframe)
   await expect(page.locator('iframe[name*="__privateStripeFrame"]').first()).toBeVisible();
 
   // Wait for the card number field to be visible and interactable
-  const cardFrame = page.frameLocator('iframe[name*="__privateStripeFrame"]');
-  await page.locator('iframe[name*="__privateStripeFrame"]').first().waitFor({ state: 'visible', timeout: 60000 });
-  await cardFrame.getByRole('textbox', { name: 'Card number' }).waitFor({ state: 'visible', timeout: 60000 });
-  await cardFrame.getByRole('textbox', { name: 'Card number' }).fill('4242 4242 4242 4242');
-  await cardFrame.getByRole('textbox', { name: 'Expiration date MM / YY' }).fill('12 / 30');
-  await cardFrame.getByRole('textbox', { name: 'Security code' }).fill('123');
+  // Find the visible Stripe iframe containing the card input
+  const stripeIframes = await page.locator('iframe[name*="__privateStripeFrame"]').elementHandles();
+    let cardFrameLocator;
+    for (const iframe of stripeIframes) {
+  const boundingBox = await iframe.boundingBox();
+    if (boundingBox) {
+  // This iframe is visible
+    cardFrameLocator = page.frameLocator(`iframe[name="${await iframe.getAttribute('name')}"]`);
+    break;
+    }
+  }
+    if (!cardFrameLocator) {
+    throw new Error('No visible Stripe card iframe found');
+  }
+  await page.locator('#order_payments_attributes__payment_method_id_25').check();
+  await cardFrameLocator.getByRole('textbox', { name: 'Card number' }).fill('4242 4242 4242 4242');
+  await cardFrameLocator.getByRole('textbox', { name: 'Expiration date MM / YY' }).fill('12 / 30');
+  await cardFrameLocator.getByRole('textbox', { name: 'Security code' }).fill('123');
+
+  // Fill in 1-click checkout with Link
+  const cardFrameHandle = stripeIframes.find(async iframe => {
+  const frame = await iframe.contentFrame();
+    if (!frame) return false;
+    try {
+  // Try to locate the card number field inside this frame
+    return await frame.getByRole('textbox', { name: 'Card number' }).isVisible();
+    } catch {
+    return false;
+    }
+  });
+  const cardFrame = await (await cardFrameHandle)?.contentFrame();
+    if (!cardFrame) throw new Error('Could not find Stripe card input frame for email/mobile fields');
+
+  await cardFrame.getByRole('textbox', { name: 'Email' }).fill(email);
+  await cardFrame.getByRole('textbox', { name: 'Mobile number' }).fill('0917 123 4567');
+  await cardFrame.getByRole('textbox', { name: 'Mobile number' }).press('Tab');
+  await cardFrame.getByRole('textbox', { name: 'Full name' }).fill('Glenn Gaetos');
 
   //Complete the order.
   await page.getByRole('button', { name: 'Pay now' }).click();
 
   //Verify the order confirmation page is shown with an order number and success message.
-  await expect(page.locator('#order_4195')).toContainText('Order');
-  await expect(page.locator('h4')).toContainText('Thanks  for your order!');
-  await expect(page.locator('#order_4195')).toContainText('Your order is confirmed! When your order is ready, you will receive an email confirmation.');
- });
-
+  await expect(page.getByRole('heading', { name: /Thanks .* for your order!/i })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/Your order is confirmed/i)).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: /Order .*/i })).toBeVisible({ timeout: 15000 });
+});
