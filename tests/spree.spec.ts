@@ -143,8 +143,8 @@ test('Spree Commerce demo store', async ({ page }) => {
 
   await cardFrame.getByRole('textbox', { name: 'Email' }).fill(email);
   await cardFrame.getByRole('textbox', { name: 'Mobile number' }).fill('0917 123 4567');
-  await cardFrame.getByRole('textbox', { name: 'Mobile number' }).press('Tab');
-  await cardFrame.getByRole('textbox', { name: 'First and last name' }).fill('Glenn Gaetos');
+  //await cardFrame.getByRole('textbox', { name: 'Mobile number' }).press('Tab');
+  await cardFrame.getByRole('textbox', { name: 'Full name' }).fill('Glenn Gaetos');
 
   //Complete the order.
   await page.getByRole('button', { name: 'Pay now' }).click();
